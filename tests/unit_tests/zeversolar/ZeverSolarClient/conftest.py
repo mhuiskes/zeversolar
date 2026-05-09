@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 from pytest_mock import MockFixture
 
@@ -17,4 +19,6 @@ def instance(mocker: MockFixture):
         "host": mocker.Mock(spec=str),
         "_serial_number": None,
         "_timeout": mocker.Mock(spec=timedelta),
+        "_hardware_version": None,
+        "_ramp_stop": threading.Event(),
     })
