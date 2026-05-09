@@ -22,6 +22,7 @@ def test___init__(mocker: pytest_mock.MockerFixture, host: str):
     assert fake.instance._serial_number is None
     assert fake.instance._hardware_version is None
     assert isinstance(fake.instance._ramp_stop, threading.Event)
+    assert type(fake.instance._ramp_lock) is type(threading.Lock())
     fake_urllib.assert_has_calls(calls=[
         call.urlparse(url=host),
         call.urlparse().netloc.strip("/"),
@@ -35,11 +36,10 @@ def test___init__(mocker: pytest_mock.MockerFixture, host: str):
         ("M10A", True),   # variant M10 hardware still matches
         ("M11", False),
         ("M11A", False),
-        (None, False),    # not yet detected
         ("", False),
     ),
 )
-def test_is_m10(mocker: pytest_mock.MockerFixture, hardware_version: str | None, expected: bool):
+def test_is_m10(mocker: pytest_mock.MockerFixture, hardware_version: str, expected: bool):
     from zeversolar import ZeverSolarClient
     fake = mocker.Mock(instance=mocker.Mock(spec=ZeverSolarClient))
     fake.instance._hardware_version = hardware_version
@@ -47,3 +47,21 @@ def test_is_m10(mocker: pytest_mock.MockerFixture, hardware_version: str | None,
     result = ZeverSolarClient._is_m10(self=fake.instance)
 
     assert result is expected
+    fake.instance.get_data.assert_not_called()
+
+
+def test_is_m10_fetches_hardware_version_when_unknown(mocker: pytest_mock.MockerFixture):
+    """If _hardware_version is None, get_data() is called to populate it."""
+    from zeversolar import ZeverSolarClient
+    fake = mocker.Mock(instance=mocker.Mock(spec=ZeverSolarClient))
+    fake.instance._hardware_version = None
+
+    def populate_hardware_version():
+        fake.instance._hardware_version = "M11"
+
+    fake.instance.get_data.side_effect = populate_hardware_version
+
+    result = ZeverSolarClient._is_m10(self=fake.instance)
+
+    fake.instance.get_data.assert_called_once()
+    assert result is False

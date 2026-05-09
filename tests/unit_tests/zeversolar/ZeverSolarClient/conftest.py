@@ -21,4 +21,5 @@ def instance(mocker: MockFixture):
         "_timeout": mocker.Mock(spec=timedelta),
         "_hardware_version": None,
         "_ramp_stop": threading.Event(),
+        "_ramp_lock": threading.Lock(),
     })

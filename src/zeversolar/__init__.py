@@ -188,6 +188,7 @@ class ZeverSolarClient:
         self._serial_number: typing.Optional[str] = None
         self._hardware_version: typing.Optional[str] = None
         self._ramp_stop: threading.Event = threading.Event()
+        self._ramp_lock: threading.Lock = threading.Lock()
 
     @retry.retry(exceptions=(ZeverSolarTimeout, ZeverSolarInvalidData), tries=3)  # pragma: no mutate
     def get_data(self) -> ZeverSolarData:
@@ -260,17 +261,18 @@ class ZeverSolarClient:
         Sleep between steps is fixed by direction: RAMP_RATE_UP when
         increasing, RAMP_RATE_DOWN when decreasing.
         """
-        # Signal any running ramp to stop, then issue a fresh stop event for
-        # the new ramp so the old and new threads don't share state.
-        self._ramp_stop.set()
-        self._ramp_stop = threading.Event()
+        # Lock ensures stop+create+start is atomic — prevents two concurrent
+        # calls from each reading the same _ramp_stop before it is replaced.
+        with self._ramp_lock:
+            self._ramp_stop.set()
+            self._ramp_stop = threading.Event()
 
-        thread = threading.Thread(
-            target=self._do_ramp,
-            args=(limit_pct, ramp_rate, on_step, self._ramp_stop),
-            daemon=True,
-        )
-        thread.start()
+            thread = threading.Thread(
+                target=self._do_ramp,
+                args=(limit_pct, ramp_rate, on_step, self._ramp_stop),
+                daemon=True,
+            )
+            thread.start()
 
     def _do_ramp(
         self,
@@ -307,6 +309,7 @@ class ZeverSolarClient:
                 # Use Event.wait() so the sleep is interruptible when stop is set.
                 stop.wait(timeout=sleep_interval)
 
+    @retry.retry(exceptions=ZeverSolarTimeout, tries=3)  # pragma: no mutate
     def _write_power_limit(self, limit_pct: int) -> None:
         """POST a single power limit step to the inverter.
 
@@ -347,6 +350,8 @@ class ZeverSolarClient:
             raise ZeverSolarHTTPError() from exception
 
     def _is_m10(self) -> bool:
+        if self._hardware_version is None:
+            self.get_data()
         return self._hardware_version is not None and self._hardware_version.startswith("M10")
 
     def power_on(self) -> PowerMode | None:
