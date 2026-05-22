@@ -228,14 +228,16 @@ class ZeverSolarClient:
 
         # adv.cgi returns one field per line (0-indexed):
         #   line 11 = ac_value1 — current power limit %
-        #   line 13 = ac_mode   — active limit mode
+        #   line 12 = ac_value2
+        #   line 13 = ac_value3
+        #   line 14 = ac_mode   — active limit mode
         lines = response.text.splitlines()
-        if len(lines) < 14:
+        if len(lines) < 15:
             raise ZeverSolarInvalidData()
 
         try:
             limit_pct = int(float(lines[11].strip()))
-            mode = PowerLimitMode(int(lines[13].strip()))
+            mode = PowerLimitMode(int(lines[14].strip()))
         except (ValueError, KeyError) as exception:
             raise ZeverSolarInvalidData() from exception
 

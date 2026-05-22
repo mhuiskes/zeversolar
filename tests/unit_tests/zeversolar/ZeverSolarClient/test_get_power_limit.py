@@ -14,13 +14,18 @@ from zeversolar.exceptions import (
     ZeverSolarTimeout,
 )
 
-# adv.cgi response: one field per line; line 11 (0-indexed) = ac_value1, line 13 = ac_mode
+# adv.cgi response: one field per line (0-indexed):
+#   line 11 = ac_value1 — current power limit %
+#   line 12 = ac_value2
+#   line 13 = ac_value3
+#   line 14 = ac_mode   — active limit mode
 _ADV_CGI_RESPONSE = "\n".join([
     "line0", "line1", "line2", "line3", "line4", "line5",
     "line6", "line7", "line8", "line9", "line10",
     "75",        # line 11 — ac_value1 (power limit %)
-    "line12",
-    "1",         # line 13 — ac_mode (1 = PERCENTAGE)
+    "line12",    # line 12 — ac_value2
+    "line13",    # line 13 — ac_value3
+    "1",         # line 14 — ac_mode (1 = PERCENTAGE)
 ])
 
 
@@ -84,8 +89,8 @@ def test_get_power_limit_invalid_data_too_few_lines(mocker: MockFixture, instanc
 @pytest.mark.parametrize(
     argnames="bad_response",
     argvalues=(
-        "\n".join(["x"] * 11 + ["not_a_number"] + ["x"] + ["1"]),  # ac_value1 not numeric
-        "\n".join(["x"] * 11 + ["75"] + ["x"] + ["99"]),           # ac_mode not a valid PowerLimitMode
+        "\n".join(["x"] * 11 + ["not_a_number"] + ["x"] + ["x"] + ["1"]),  # ac_value1 not numeric
+        "\n".join(["x"] * 11 + ["75"] + ["x"] + ["x"] + ["99"]),         # ac_mode not a valid PowerLimitMode
     ),
 )
 def test_get_power_limit_invalid_data_unparseable_fields(
