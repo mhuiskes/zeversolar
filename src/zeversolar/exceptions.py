@@ -29,3 +29,9 @@ class ZeverSolarHTTPNotFound(ZeverSolarHTTPError):
     """
     Exception thrown when an HTTP Not Found (404) error occurs
     """
+
+
+class ZeverSolarPowerLimitNotSupported(ZeverSolarError):
+    """
+    Exception thrown when the inverter does not support power limiting
+    """

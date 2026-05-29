@@ -31,6 +31,18 @@ def test_get_data(mocker: MockFixture, instance: Mock):
     ])
 
 
+def test_get_data_caches_hardware_version(mocker: MockFixture, instance: Mock):
+    """get_data() populates _hardware_version so set_power_limit can detect hardware."""
+    mocker.patch("zeversolar.requests.get")
+    patched_parser = mocker.patch("zeversolar.ZeverSolarParser")
+    from zeversolar import ZeverSolarClient
+    fake = mocker.Mock(instance=instance)
+
+    ZeverSolarClient.get_data(self=fake.instance)
+
+    assert fake.instance._hardware_version is patched_parser.return_value.parse.return_value.hardware_version
+
+
 @pytest.mark.parametrize(
     argnames="requests_side_effect,response_status,expected_exception",
     argvalues=(
